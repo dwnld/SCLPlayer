@@ -160,7 +160,7 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
     self.loadDidFail = NO;
     self.isLoadingPlayer = YES;
     
-    NSURL* scURL = [[NSBundle mainBundle] URLForResource:@"soundcloudPlayer" withExtension:@"html"];
+    NSURL* scURL = [[NSBundle bundleForClass:self.class] URLForResource:@"soundcloudPlayer" withExtension:@"html"];
     NSAssert(scURL, @"Unable to find soundcloudPlayer.html in source bundle");
     
     NSString* urlParam = [[self.initialURL absoluteString] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
