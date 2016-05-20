@@ -99,6 +99,8 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
             @"getSounds" : [NSMutableArray array],
             @"getCurrentSound" : [NSMutableArray array]
         }];
+        
+        [self view];
     }
     
     return self;
