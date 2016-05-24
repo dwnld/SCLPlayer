@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = "SCLPlayer"
-  s.version          = "0.2.3"
+  s.version          = "0.2.4"
   s.summary          = "A SoundCloud player for iOS apps. Uses UIWebView to display their HTML5 widget."
   s.homepage         = "https://github.com/eric-robinson/SCLPlayer"
   s.license          = 'MIT'
