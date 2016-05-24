@@ -2,7 +2,7 @@
 //  SCLPlayerViewController.h
 //  SCLPlayer
 //
-//  This class provides a UIWebView based SoundCloud player with relatively complete api coverage.
+//  This class provides a WKWebView based SoundCloud player with relatively complete api coverage.
 //  Docs for the js widget can be found at: https://developers.soundcloud.com/docs/api/html5-widget
 //
 //  Created by Eric Robinson on 7/10/14.
@@ -10,6 +10,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <WebKit/WebKit.h>
 
 
 #pragma mark - Typedefs
@@ -22,7 +23,7 @@ typedef void (^SCLPlayerResponseHandler)(id results);
 
 @property (readonly, assign, nonatomic) BOOL isPaused;
 
-@property (readonly, strong, nonatomic) UIWebView* webview;
+@property (readonly, strong, nonatomic) WKWebView* webview;
 @property (readonly, strong, nonatomic) UILabel *connectionIssueLabel;
 
 - (id)initWithURL:(NSURL*)url configuration:(NSDictionary*)config;

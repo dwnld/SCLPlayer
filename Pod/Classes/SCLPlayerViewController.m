@@ -33,7 +33,7 @@ NSString* const SCLPlayerPropertyLiking = @"liking";
 NSString* const SCLPlayerPropertyDownload = @"download";
 NSString* const SCLPlayerPropertyBuying = @"buying";
 
-@interface SCLPlayerViewController () <UIWebViewDelegate>
+@interface SCLPlayerViewController () <WKNavigationDelegate>
 
 #pragma mark - Configuration
 
@@ -42,7 +42,7 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
 
 #pragma mark - View
 
-@property (readwrite, strong, nonatomic) UIWebView* webview;
+@property (readwrite, strong, nonatomic) WKWebView* webview;
 
 @property (readwrite, strong, nonatomic) UIActivityIndicatorView *activityIndicator;
 @property (readwrite, strong, nonatomic) UILabel *connectionIssueLabel;
@@ -120,15 +120,22 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
     CGRect screenBounds = [UIScreen mainScreen].bounds;
     self.view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(screenBounds), 96.f)];
     
-    self.webview = [[UIWebView alloc] initWithFrame:self.view.bounds];
-    self.webview.delegate = self;
+    WKWebViewConfiguration *config = [WKWebViewConfiguration new];
+    config.allowsInlineMediaPlayback = YES;
+    if ([config respondsToSelector:@selector(requiresUserActionForMediaPlayback)]) {
+        config.requiresUserActionForMediaPlayback = NO;
+    } else {
+        config.mediaPlaybackRequiresUserAction = NO;
+    }
+    config.suppressesIncrementalRendering = YES;
+    
+    self.webview = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:config];
+    self.webview.navigationDelegate = self;
     self.webview.opaque = NO;
     
     self.webview.backgroundColor = [UIColor clearColor];
     self.webview.scrollView.scrollEnabled = NO;
     self.webview.scrollView.bounces = NO;
-    self.webview.mediaPlaybackRequiresUserAction = NO;
-    self.webview.suppressesIncrementalRendering = YES;
     
     [self.view addSubview:self.webview];
 
@@ -223,7 +230,7 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
 {
     if (self.hasLoadedPlayer)
     {
-        [self.webview stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"SCLPlayer.playTrack(%@);", soundcloudTrackID]];
+        [self.webview evaluateJavaScript:[NSString stringWithFormat:@"SCLPlayer.playTrack(%@);", soundcloudTrackID] completionHandler:nil];
     }
     else
     {
@@ -238,7 +245,7 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
 
 - (void)pause
 {
-    [self.webview stringByEvaluatingJavaScriptFromString:@"SCLPlayer.scPlayer().pause()"];
+    [self.webview evaluateJavaScript:@"SCLPlayer.scPlayer().pause()" completionHandler:nil];
 }
 
 - (void)play
@@ -249,40 +256,40 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
         [self loadPlayer];
     }
     else {
-        [self.webview stringByEvaluatingJavaScriptFromString:@"SCLPlayer.scPlayer().play()"];
+        [self.webview evaluateJavaScript:@"SCLPlayer.scPlayer().play()" completionHandler:nil];
     }
 }
 
 - (void)next
 {
-    [self.webview stringByEvaluatingJavaScriptFromString:@"SCLPlayer.scPlayer().next()"];
+    [self.webview evaluateJavaScript:@"SCLPlayer.scPlayer().next()" completionHandler:nil];
 }
 
 - (void)prev
 {
-    [self.webview stringByEvaluatingJavaScriptFromString:@"SCLPlayer.scPlayer().prev()"];
+    [self.webview evaluateJavaScript:@"SCLPlayer.scPlayer().prev()" completionHandler:nil];
 }
 
 - (void)skip:(NSUInteger)soundIndex
 {
-    [self.webview stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"SCLPlayer.scPlayer().skip(%@)", @(soundIndex)]];
+    [self.webview evaluateJavaScript:[NSString stringWithFormat:@"SCLPlayer.scPlayer().skip(%@)", @(soundIndex)] completionHandler:nil];
 }
 
 - (void)seekTo:(NSUInteger)milliseconds
 {
-    [self.webview stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"SCLPlayer.scPlayer().seekTo(%@)", @(milliseconds)]];
+    [self.webview evaluateJavaScript:[NSString stringWithFormat:@"SCLPlayer.scPlayer().seekTo(%@)", @(milliseconds)] completionHandler:nil];
 }
 
 - (void)setVolume:(NSUInteger)volume
 {
     //bind the input
     volume = MIN(MAX(volume, 0), 100);
-    [self.webview stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"SCLPlayer.scPlayer().setVolume(%@)", @(volume)]];
+    [self.webview evaluateJavaScript:[NSString stringWithFormat:@"SCLPlayer.scPlayer().setVolume(%@)", @(volume)] completionHandler:nil];
 }
 
 - (void)toggle
 {
-    [self.webview stringByEvaluatingJavaScriptFromString:@"SCLPlayer.scPlayer().toggle()"];
+    [self.webview evaluateJavaScript:@"SCLPlayer.scPlayer().toggle()" completionHandler:nil];
 }
 
 - (void)performQuery:(NSString*)query withResponseHandler:(SCLPlayerResponseHandler)responseBlock
@@ -291,7 +298,7 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
     [(NSMutableArray*)[self.pendingResponseHandlers objectForKey:query] addObject:responseCopy];
     
     NSString* js = [NSString stringWithFormat:@"SCLPlayer.%@()", query];
-    [self.webview stringByEvaluatingJavaScriptFromString:js];
+    [self.webview evaluateJavaScript:js completionHandler:nil];
 }
 
 - (void)getSounds:(SCLPlayerResponseHandler)responseBlock
@@ -324,11 +331,12 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
     [self performQuery:@"getPosition" withResponseHandler:responseBlock];
 }
 
-#pragma mark - UIWebViewDelegate
+#pragma mark - WKNavigationDelegate
 
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
 {
     // sclplayer:// is used to message the webview from soundcloudPlayer.html
+    NSURLRequest *request = navigationAction.request;
     if([[request.URL scheme] isEqualToString:@"sclplayer"])
     {
         NSString* urlString = [request.URL absoluteString];
@@ -372,7 +380,7 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
             
             if (self.pendingTrackID)
             {
-                [self.webview stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"SCLPlayer.playTrack(%@);", self.pendingTrackID]];
+                [self.webview evaluateJavaScript:[NSString stringWithFormat:@"SCLPlayer.playTrack(%@);", self.pendingTrackID] completionHandler:nil];
                 
             }
             else if (self.isPendingPlay)
@@ -420,19 +428,20 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
             [self.pendingResponseHandlers setObject:[NSMutableArray array] forKey:command];
         }
         
-        return NO;
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
     }
     
-    if(navigationType == UIWebViewNavigationTypeLinkClicked)
+    if(navigationAction.navigationType == WKNavigationTypeLinkActivated)
     {
-        return NO;
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
     }
     
-    
-    return YES;
+    decisionHandler(WKNavigationActionPolicyAllow);
 }
 
-- (void)webViewDidFinishLoad:(UIWebView *)webView
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
     self.isLoadingPlayer = NO;
     
@@ -453,7 +462,7 @@ NSString* const SCLPlayerPropertyBuying = @"buying";
     
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
     self.isLoadingPlayer = NO;
     self.hasLoadedPlayer = NO;
